@@ -8,27 +8,42 @@
 import SwiftUI
 
 enum ContentState {
-    case first
-    case second
+    case pausing
+    case playing
 }
+
+struct CountTimer {
+    var time: TimeInterval = 0
+    var state: ContentState = .pausing
+    var timer: Timer!
+}
+
+var timer: Timer!
 
 struct ContentView: View {
     
-    @State var statusArray: [ContentState] = [.first, .first, .first, .first, .first]
+    @State var timersArray: [CountTimer] = [CountTimer(), CountTimer(), CountTimer(), CountTimer(), CountTimer()]
     
+    func intToTime(time: TimeInterval) -> String {
+        let dateFormatter = DateComponentsFormatter()
+        dateFormatter.unitsStyle = .positional
+        dateFormatter.allowedUnits = [.hour, .minute, .second]
+        return(dateFormatter.string(from: time)!)
+    }
     
     var body: some View {
         List {
             
-            ForEach (0 ..< statusArray.count, id: \.self) { index in
+            ForEach (0 ..< timersArray.count, id: \.self) { index in
                 HStack {
-                    switch statusArray[index] {
-                    case .first:
-                        PlayView(state: $statusArray[index])
-                    case .second:
-                        PauseView(state: $statusArray[index])
+                    switch timersArray[index].state {
+                    case .playing:
+                        PauseView(state: $timersArray[index].state, timer: $timersArray[index].timer)
+                    case .pausing:
+                        PlayView(state: $timersArray[index].state, timer: $timersArray[index].timer, time: $timersArray[index].time)
                     }
-                    Text("0")
+
+                    Text(intToTime(time: timersArray[index].time))
                     Spacer()
                 }
                 .contentShape(Rectangle())
@@ -40,6 +55,8 @@ struct ContentView: View {
 
 struct PlayView: View {
     @Binding var state: ContentState
+    @Binding var timer: Timer?
+    @Binding var time: TimeInterval
     var body: some View {
         Image(systemName: "play.fill")
             .resizable()
@@ -47,14 +64,18 @@ struct PlayView: View {
             .foregroundColor(.green)
             .frame(width: 30.0, height: 30.0)
             .onTapGesture {
-                state = .second
-                print(state)
+                state = .playing
+                timer = Timer.init(timeInterval: 1.0, repeats: true) { _ in
+                    time += 1
+                }
+                RunLoop.current.add(timer!, forMode: .common)
             }
     }
 }
 
 struct PauseView: View {
     @Binding var state: ContentState
+    @Binding var timer: Timer?
     var body: some View {
         Image(systemName: "pause.fill")
             .resizable()
@@ -62,8 +83,8 @@ struct PauseView: View {
             .foregroundColor(.green)
             .frame(width: 30.0, height: 30.0)
             .onTapGesture {
-                state = .first
-                print(state)
+                state = .pausing
+                timer!.invalidate()
             }
     }
 }
